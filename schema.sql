@@ -22,3 +22,6 @@ create policy "board delete" on board for delete using (auth.uid()=id);
 create function delete_me() returns void language sql security definer set search_path=public as $$
   delete from auth.users where id=auth.uid();
 $$;
+-- Security: only logged-in users may call delete_me (anon could previously execute it)
+revoke execute on function delete_me() from public, anon;
+grant execute on function delete_me() to authenticated;
