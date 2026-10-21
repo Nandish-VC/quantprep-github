@@ -13,6 +13,9 @@ const fmt=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+Stri
 const td=()=>fmt(new Date()),add=(s,n)=>{const d=new Date(s+"T00:00:00");d.setDate(d.getDate()+n);return fmt(d)};
 const mon=s=>{const d=new Date(s+"T00:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));return fmt(d)};
 let S=JSON.parse(localStorage.qp||"null"),tab="today",board=[],bm="wk",err="",tm=JSON.parse(localStorage.qpt||"null"),T;
+// modal state: must be declared before the first draw() call
+let M=null,Q=null;
+const sub=k=>{const[t,i]=k.split("|");return C[t].split("|")[i]};
 const sb=supabase.createClient(CFG.url,CFG.key);
 // Supabase Auth needs an email, so we derive a hidden one from the name (users never see or type it).
 const em=n=>[...new TextEncoder().encode(n.trim().toLowerCase())].map(b=>b.toString(16).padStart(2,"0")).join("")+"@quantprep.app";
@@ -35,7 +38,7 @@ async function api(a,b={}){try{
  if(a=="board"){const r=await sb.from("board").select("name,wk,streak,probs,topics");return{rows:r.data||[]}}
  if(a=="delete"){await sb.rpc("delete_me");return{ok:1}}
 }catch(e){return{err:"Network error"}}}
-function save(){localStorage.qp=JSON.stringify(S);clearTimeout(T);T=setTimeout(async()=>{const r=await api("save",{d:S.d});if(r.err){err=r.err;if(/expired/.test(r.err)){S=null;localStorage.qp="null"}}else err="";draw()},700);draw()}
+function save(){localStorage.qp=JSON.stringify(S);clearTimeout(T);T=setTimeout(async()=>{if(!S)return;const r=await api("save",{d:S.d});if(r.err){err=r.err;if(/expired/.test(r.err)){S=null;localStorage.qp="null"}}else err="";draw()},700);draw()}
 async function auth(a){const r=await api(a,{name:$("#n").value,pw:$("#p").value});if(r.err){err=r.err;return draw()}S={tok:r.tok,name:r.name,d:r.d};if(!S.d.start)S.d.start=td();err="";localStorage.qp=JSON.stringify(S);save();tab="today";draw()}
 function logout(){sb.auth.signOut();S=null;localStorage.qp="null";draw()}
 // stats (mirror of server logic)
@@ -97,8 +100,6 @@ if(f&&v!=null){const e=document.getElementById(f);if(e){e.value=v;e.focus()}}}
 document.addEventListener("keydown",e=>{if(e.key=="Enter"&&!S)auth("login")});
 draw();if(S)api("load").then(r=>{if(r.d){S.d=r.d;if(!S.d.start)S.d.start=td();draw()}else if(r.err){err=r.err;draw()}});setInterval(()=>{if(S&&tab=="board")loadBoard()},30000);
 
-let M=null,Q=null;
-const sub=k=>{const[t,i]=k.split("|");return C[t].split("|")[i]};
 function openN(k){M=k;Q=null;draw()}
 function closeM(){M=null;Q=null;draw()}
 function startQ(k){M=k;Q={i:0,sc:0,a:null};draw()}
